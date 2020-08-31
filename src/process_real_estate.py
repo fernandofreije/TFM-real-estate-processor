@@ -38,7 +38,7 @@ from pyspark.sql import SparkSession
 
 
 class NoLog():
-    info():
+    def info(self):
         pass
 
 
