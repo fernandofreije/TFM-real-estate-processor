@@ -36,7 +36,10 @@ Zeppelin notebook).
 from pyspark.sql.functions import mean
 from pyspark.sql import SparkSession
 
-noop = lambda *a, **k: None
+
+class NoLog():
+    info():
+        pass
 
 
 def main():
@@ -82,13 +85,13 @@ def extract_data(spark):
     return df
 
 
-def transform_data(df, log=noop):
+def transform_data(df, log=NoLog()):
     """Transform original dataset.
 
     :param df: Input DataFrame.
     :return: Transformed DataFrame.
     """
-    log(df.limit(10))
+    log.info(df.limit(10))
 
     df_transformed = (
         df.groupBy("province")
