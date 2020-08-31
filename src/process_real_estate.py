@@ -33,13 +33,8 @@ and jobs or called from within another environment (e.g. a Jupyter or
 Zeppelin notebook).
 """
 
-from pyspark.sql.functions import mean
+from pyspark.sql.functions import mean, to_date, col
 from pyspark.sql import SparkSession
-
-
-class NoLog():
-    def info(self):
-        pass
 
 
 def main():
@@ -48,10 +43,10 @@ def main():
     :return: None
     """
     # start Spark application and get Spark session, logger and config
-    spark = SparkSession.builder.master("yarn")\
+    spark = SparkSession.builder\
         .appName("demo")\
         .config("spark.mongodb.input.uri", "mongodb+srv://tfm:frei1996@tfm-real-estate.kovd1.gcp.mongodb.net/real_estate.flats?retryWrites=true&w=majority")\
-        .config("spark.mongodb.output.uri", "mongodb+srv://tfm:frei1996@tfm-real-estate.kovd1.gcp.mongodb.net/real_estate.flats?retryWrites=true&w=majority")\
+        .config("spark.mongodb.output.uri", "mongodb+srv://tfm:frei1996@tfm-real-estate.kovd1.gcp.mongodb.net/real_estate.summary?retryWrites=true&w=majority")\
         .getOrCreate()
 
     spark_logger = spark._jvm.org.apache.log4j
@@ -62,7 +57,7 @@ def main():
 
     # execute ETL pipeline
     data = extract_data(spark)
-    data_transformed = transform_data(data, log=log)
+    data_transformed = transform_data(data)
     load_data(data_transformed)
 
     # log the success and terminate Spark application
@@ -73,11 +68,8 @@ def main():
 
 def extract_data(spark):
     """Load data from Parquet file format.
-
-    :param spark: Spark session object.
-    :return: Spark DataFrame.
+        : param spark: Spark session object.: return: Spark DataFrame.
     """
-
     df = (
         spark.read.format("mongo").load()
     )
@@ -85,31 +77,25 @@ def extract_data(spark):
     return df
 
 
-def transform_data(df, log=NoLog()):
+def transform_data(df):
     """Transform original dataset.
-
-    :param df: Input DataFrame.
-    :return: Transformed DataFrame.
+        :  param df: Input DataFrame.: return: Transformed DataFrame.
     """
-    log.info(df.limit(10))
+    df_transformed = df.withColumn(
+        "created_at_date", to_date(col("created_at")))
+    df_transformed = df_transformed.groupBy("province", 'created_at_date').agg(
+        mean("price").alias('avg_price'), mean("size").alias('avg_size'))
 
-    df_transformed = (
-        df.groupBy("province")
-        .agg(mean("price").alias("average_price"))
-        .agg(mean("size").alias("average_size"))
-    )
+    df_transformed.show()
 
     return df_transformed
 
 
 def load_data(df):
     """Collect data locally and write to CSV.
-
-    :param df: DataFrame to print.
-    :return: None
+        : param df: DataFrame to print.: return: None
     """
-    df.write.format("mongo").mode("append").option("uri", "mongodb+srv://tfm:frei1996@tfm-real-estate.kovd1.gcp.mongodb.net/real_estate?retryWrites=true&w=majority").option(
-        "database", "real_estate").option("collection", "summary").save()
+    df.write.format("mongo").mode("append").save()
 
     return None
 
