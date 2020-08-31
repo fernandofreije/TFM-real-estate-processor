@@ -33,9 +33,10 @@ and jobs or called from within another environment (e.g. a Jupyter or
 Zeppelin notebook).
 """
 
-import logging
 from pyspark.sql.functions import mean
 from pyspark.sql import SparkSession
+
+noop = lambda *a, **k: None
 
 
 def main():
@@ -58,7 +59,7 @@ def main():
 
     # execute ETL pipeline
     data = extract_data(spark)
-    data_transformed = transform_data(data)
+    data_transformed = transform_data(data, log=log)
     load_data(data_transformed)
 
     # log the success and terminate Spark application
@@ -73,6 +74,7 @@ def extract_data(spark):
     :param spark: Spark session object.
     :return: Spark DataFrame.
     """
+
     df = (
         spark.read.format("mongo").load()
     )
@@ -80,12 +82,14 @@ def extract_data(spark):
     return df
 
 
-def transform_data(df):
+def transform_data(df, log=noop):
     """Transform original dataset.
 
     :param df: Input DataFrame.
     :return: Transformed DataFrame.
     """
+    log(df.limit(10))
+
     df_transformed = (
         df.groupBy("province")
         .agg(mean("price").alias("average_price"))
