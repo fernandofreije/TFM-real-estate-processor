@@ -46,6 +46,8 @@ def main():
     # start Spark application and get Spark session, logger and config
     spark = SparkSession.builder.master("yarn")\
         .appName("demo")\
+        .config("spark.mongodb.input.uri", "mongodb+srv://tfm:frei1996@tfm-real-estate.kovd1.gcp.mongodb.net/real_estate.flats?retryWrites=true&w=majority")\
+        .config("spark.mongodb.output.uri", "mongodb+srv://tfm:frei1996@tfm-real-estate.kovd1.gcp.mongodb.net/real_estate.flats?retryWrites=true&w=majority")\
         .getOrCreate()
 
     spark_logger = spark._jvm.org.apache.log4j
@@ -72,8 +74,7 @@ def extract_data(spark):
     :return: Spark DataFrame.
     """
     df = (
-        spark.read.format("mongo").option(
-            "uri", "mongodb+srv://tfm:frei1996@tfm-real-estate.kovd1.gcp.mongodb.net/real_estate?retryWrites=true&w=majority").load()
+        spark.read.format("mongo").load()
     )
 
     return df
