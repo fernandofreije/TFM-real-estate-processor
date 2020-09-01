@@ -1,0 +1,25 @@
+name: Run processing job
+
+on:
+  schedule:
+    - cron: "30 * * *"
+env:
+  GCS_BUCKET: ${{ secrets.GCS_BUCKET }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup - gcloud / gsutil
+        uses: GoogleCloudPlatform/github-actions/setup-gcloud@master
+        with:
+          service_account_key: ${{ secrets.GCS_SA_KEY }}
+          project_id: ${{ secrets.GCS_PROJECT }}
+          export_default_credentials: true
+      - name: Run cluster
+        run: |-
+          gcloud dataproc workflow-templates instantiate real-estate-processing-workflow --region=europe-west2

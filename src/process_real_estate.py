@@ -95,7 +95,7 @@ def load_data(df):
     """Collect data locally and write to CSV.
         : param df: DataFrame to print.: return: None
     """
-    df.write.format("mongo").mode("append").save()
+    df.write.format("mongo").mode("overwrite").save()
 
     return None
 
