@@ -2,7 +2,7 @@ name: Run processing job
 
 on:
   schedule:
-    - cron: "30 * * * *"
+    - cron: "30/0 * * * *"
 env:
   GCS_BUCKET: ${{ secrets.GCS_BUCKET }}
 
