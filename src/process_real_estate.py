@@ -33,7 +33,7 @@ and jobs or called from within another environment (e.g. a Jupyter or
 Zeppelin notebook).
 """
 
-from pyspark.sql.functions import mean, to_date, col
+from pyspark.sql.functions import mean, to_date, col, lit
 from pyspark.sql import SparkSession
 
 
@@ -42,6 +42,7 @@ def main():
 
     :return: None
     """
+
     # start Spark application and get Spark session, logger and config
     spark = SparkSession.builder\
         .appName("demo")\
@@ -83,10 +84,17 @@ def transform_data(df):
     """
     df_transformed = df.withColumn(
         "created_at_date", to_date(col("created_at")))
-    df_transformed = df_transformed.groupBy("province", 'created_at_date').agg(
+
+    summary_data = df_transformed.groupBy("province", 'created_at_date').agg(
         mean("price").alias('avg_price'), mean("size").alias('avg_size'))
 
-    df_transformed.show()
+    summary_data.show()
+    summary_data_all = df_transformed.groupBy('created_at_date').agg(
+        mean("price").alias('avg_price'), mean("size").alias('avg_size')).select(lit('all').alias('province'), '*')
+
+    summary_data_all.show()
+    summary_data.union(summary_data_all)
+    summary_data.show()
 
     return df_transformed
 
