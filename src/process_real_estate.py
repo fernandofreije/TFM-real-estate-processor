@@ -96,7 +96,7 @@ def transform_data(df):
     summary_data.union(summary_data_all)
     summary_data.show()
 
-    return df_transformed
+    return summary_data
 
 
 def load_data(df):
