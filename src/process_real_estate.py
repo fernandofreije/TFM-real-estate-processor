@@ -86,20 +86,18 @@ def get_summary_by(df, summaryBy):
         *calculations).select(lit('all').alias('operation'), lit('all').alias('province'), '*')
 
     by_province_all_operations = df.groupBy(
-        "province", summaryBy).agg(*calculations).select(lit('all').alias('operation'), '*')
+        summaryBy, "province").agg(*calculations).select(lit('all').alias('operation'), '*')
 
     all_provinces_by_operation = df.groupBy(
-        'operation', summaryBy).agg(*calculations)
-    all_provinces_by_operation = all_provinces_by_operation.select('operation', lit('all').alias(
-        'province'), *[c for c in all_provinces_by_operation.columns if c != 'operation'])
+        summaryBy, 'operation', ).agg(*calculations)
+    all_provinces_by_operation = all_provinces_by_operation.select(*[c for c in all_provinces_by_operation.columns if c != 'operation'], 'operation', lit('all').alias(
+        'province'), )
 
     by_province_by_operation = df.groupBy(
-        'operation', 'province', summaryBy).agg(*calculations)
+        summaryBy, 'operation', 'province').agg(*calculations)
 
     summary = all_provinces_all_operations.union(by_province_all_operations).union(
         all_provinces_by_operation).union(by_province_by_operation)
-
-    summary.show()
 
     return summary
 
@@ -127,8 +125,6 @@ def get_summary(df):
     summary = all_provinces_all_operations.union(by_province_all_operations).union(
         all_provinces_by_operation).union(by_province_by_operation)
 
-    summary.show()
-
     return summary
 
 
@@ -140,11 +136,14 @@ def transform_data(df):
         .withColumn("created_at_date", to_date(col("created_at")))\
         .withColumn("updated_at_date", to_date(col("updated_at")))
 
-    by_created_at = get_summary_by(
-        df_transformed, 'created_at_date').select('created_at_date', '*')
+    by_created_at = get_summary_by(df_transformed, 'created_at_date')
 
-    today_summary = get_summary(
-        df_transformed).select(lit(None).alias('created_at_date'), '*')
+    by_created_at.show()
+
+    today_summary = get_summary(df_transformed).select(
+        lit(None).alias('created_at_date'), '*')
+
+    today_summary.show()
 
     return today_summary.union(by_created_at)
 
