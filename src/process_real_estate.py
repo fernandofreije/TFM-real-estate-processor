@@ -33,7 +33,7 @@ and jobs or called from within another environment (e.g. a Jupyter or
 Zeppelin notebook).
 """
 
-from pyspark.sql.functions import mean, to_date, col, lit, count
+from pyspark.sql.functions import mean, to_date, col, lit, count, current_date
 from pyspark.sql import SparkSession
 
 
@@ -78,7 +78,7 @@ def extract_data(spark):
     return df
 
 
-def get_summary(df, summaryBy):
+def get_summary_by(df, summaryBy):
     calculations = [mean("price").alias('avg_price'), mean(
         "size").alias('avg_size'), count(lit(1)).alias('total')]
 
@@ -104,6 +104,34 @@ def get_summary(df, summaryBy):
     return summary
 
 
+def get_summary(df):
+    calculations = [mean("price").alias('avg_price'), mean(
+        "size").alias('avg_size'), count(lit(1)).alias('total')]
+
+    filtered_df = df.filter(col('updated_at_date') == current_date())
+
+    all_provinces_all_operations = filtered_df.agg(
+        *calculations).select(lit('all').alias('operation'), lit('all').alias('province'), '*')
+
+    by_province_all_operations = filtered_df.groupBy(
+        "province").agg(*calculations).select(lit('all').alias('operation'), '*')
+
+    all_provinces_by_operation = filtered_df.groupBy(
+        'operation').agg(*calculations)
+    all_provinces_by_operation = all_provinces_by_operation.select('operation', lit('all').alias(
+        'province'), *[c for c in all_provinces_by_operation.columns if c != 'operation'])
+
+    by_province_by_operation = filtered_df.groupBy(
+        'operation', 'province').agg(*calculations)
+
+    summary = all_provinces_all_operations.union(by_province_all_operations).union(
+        all_provinces_by_operation).union(by_province_by_operation)
+
+    summary.show()
+
+    return summary
+
+
 def transform_data(df):
     """Transform original dataset.
         :  param df: Input DataFrame.: return: Transformed DataFrame.
@@ -112,15 +140,13 @@ def transform_data(df):
         .withColumn("created_at_date", to_date(col("created_at")))\
         .withColumn("updated_at_date", to_date(col("updated_at")))
 
-    by_created_at = get_summary(df_transformed, 'created_at_date')
-    by_created_at = by_created_at.select('created_at_date', lit(
-        None).alias('updated_at_date'), *[c for c in by_created_at.columns if c != 'created_at_date'])
+    by_created_at = get_summary_by(
+        df_transformed, 'created_at_date').select('created_at_date', '*')
 
-    by_updated_at = get_summary(df_transformed, 'updated_at_date')
-    by_updated_at = by_updated_at.select(lit(
-        None).alias('created_at_date'), 'updated_at_date', *[c for c in by_updated_at.columns if c != 'updated_at_date'])
+    today_summary = get_summary(
+        df_transformed).select(lit(None).alias('created_at_date'), '*')
 
-    return by_created_at.union(by_updated_at)
+    return today_summary.union(by_created_at)
 
 
 def load_data(df):
