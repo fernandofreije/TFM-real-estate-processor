@@ -36,6 +36,8 @@ Zeppelin notebook).
 from pyspark.sql.functions import mean, to_date, col, lit, count, current_date
 from pyspark.sql import SparkSession
 
+from datetime import date, timedelta
+
 
 def main():
     """Main ETL script definition.
@@ -106,7 +108,8 @@ def get_summary(df):
     calculations = [mean("price").alias('avg_price'), mean(
         "size").alias('avg_size'), count(lit(1)).alias('total')]
 
-    filtered_df = df.filter(col('updated_at_date') == current_date())
+    filtered_df = df.filter(col('updated_at_date') >=
+                            date.today() - timedelta(days=1))
 
     all_provinces_all_operations = filtered_df.agg(
         *calculations).select(lit('all').alias('operation'), lit('all').alias('province'), '*')
