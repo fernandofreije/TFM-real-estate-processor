@@ -84,19 +84,18 @@ def get_summary_by(df, summaryBy):
     calculations = [mean("price").alias('avg_price'), mean(
         "size").alias('avg_size'), count(lit(1)).alias('total')]
 
-    all_provinces_all_operations = df.groupBy(summaryBy).agg(
-        *calculations).select(lit('all').alias('operation'), lit('all').alias('province'), '*')
+    all_provinces_all_operations = select_ordered_columns(df.groupBy(summaryBy).agg(
+        *calculations).select(lit('all').alias('operation'), lit('all').alias('province'), '*'))
 
-    by_province_all_operations = df.groupBy(
-        summaryBy, "province").agg(*calculations).select(lit('all').alias('operation'), '*')
+    by_province_all_operations = select_ordered_columns(df.groupBy(
+        summaryBy, "province").agg(*calculations).select(lit('all').alias('operation'), '*'))
 
-    all_provinces_by_operation = df.groupBy(
-        summaryBy, 'operation', ).agg(*calculations)
-    all_provinces_by_operation = all_provinces_by_operation.select(*[c for c in all_provinces_by_operation.columns if c != 'operation'], 'operation', lit('all').alias(
-        'province'), )
+    all_provinces_by_operation = select_ordered_columns(df.groupBy(
+        summaryBy, 'operation', ).agg(*calculations).select(lit('all').alias(
+            'province'), '*'))
 
-    by_province_by_operation = df.groupBy(
-        summaryBy, 'operation', 'province').agg(*calculations)
+    by_province_by_operation = select_ordered_columns(df.groupBy(
+        summaryBy, 'operation', 'province').agg(*calculations))
 
     summary = all_provinces_all_operations.union(by_province_all_operations).union(
         all_provinces_by_operation).union(by_province_by_operation)
@@ -111,19 +110,17 @@ def get_summary(df):
     filtered_df = df.filter(col('updated_at_date') >=
                             date.today() - timedelta(days=1))
 
-    all_provinces_all_operations = filtered_df.agg(
-        *calculations).select(lit('all').alias('operation'), lit('all').alias('province'), '*')
+    all_provinces_all_operations = select_ordered_columns(filtered_df.agg(
+        *calculations).select(lit('all').alias('operation'), lit('all').alias('province'), '*'), ignore=['created_at_date'])
 
-    by_province_all_operations = filtered_df.groupBy(
-        "province").agg(*calculations).select(lit('all').alias('operation'), '*')
+    by_province_all_operations = select_ordered_columns(filtered_df.groupBy(
+        "province").agg(*calculations).select(lit('all').alias('operation'), '*'), ignore=['created_at_date'])
 
-    all_provinces_by_operation = filtered_df.groupBy(
-        'operation').agg(*calculations)
-    all_provinces_by_operation = all_provinces_by_operation.select('operation', lit('all').alias(
-        'province'), *[c for c in all_provinces_by_operation.columns if c != 'operation'])
+    all_provinces_by_operation = select_ordered_columns(filtered_df.groupBy(
+        'operation').agg(*calculations).select(lit('all').alias('province'), '*'), ignore=['created_at_date'])
 
-    by_province_by_operation = filtered_df.groupBy(
-        'operation', 'province').agg(*calculations)
+    by_province_by_operation = select_ordered_columns(filtered_df.groupBy(
+        'operation', 'province').agg(*calculations), ignore=['created_at_date'])
 
     summary = all_provinces_all_operations.union(by_province_all_operations).union(
         all_provinces_by_operation).union(by_province_by_operation)
@@ -139,12 +136,13 @@ def transform_data(df):
         .withColumn("created_at_date", to_date(col("created_at")))\
         .withColumn("updated_at_date", to_date(col("updated_at")))
 
-    by_created_at = get_summary_by(df_transformed, 'created_at_date')
+    by_created_at = select_ordered_columns(get_summary_by(df_transformed, 'created_at_date').select(
+        'created_at_date', 'province', 'operation', 'avg_price', 'avg_size', 'total'))
 
     by_created_at.show()
 
-    today_summary = get_summary(df_transformed).select(
-        lit(None).alias('created_at_date'), '*')
+    today_summary = select_ordered_columns(get_summary(df_transformed).select(
+        lit(None).alias('created_at_date'), '*'))
 
     today_summary.show()
 
@@ -158,6 +156,14 @@ def load_data(df):
     df.write.format("mongo").mode("overwrite").save()
 
     return None
+
+
+def select_ordered_columns(df, ignore=[]):
+
+    columns = [c for c in ['created_at_date', 'province', 'operation',
+                           'avg_price', 'avg_size', 'total'] if c not in ignore]
+
+    return df.select(columns)
 
 
 # entry point for PySpark ETL application
